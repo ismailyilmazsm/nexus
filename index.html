@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nexus AI | Ultimate Pro</title>
+    
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    <style>
+        /* --- TASARIM SİSTEMİ ÇEKİRDEĞİ --- */
+        :root {
+            --bg-color: #131314;
+            --surface-color: #1E1F20;
+            --sidebar-color: #0E0E0F;
+            --text-primary: #E3E3E3;
+            --text-secondary: #C4C7C5;
+            --border-color: #444746;
+            --user-bubble: #28292A;
+            --nexus-grad: linear-gradient(135deg, #4285F4, #9B72CB, #D96570);
+        }
+
+        /* EVRENSEL SIFIRLAMA */
+        * {
+            box-sizing: border-box;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Roboto', sans-serif;
+            /* Dinamik Viewport Yüksekliği: Her tarayıcıda tam uyum sağlar */
+            height: 100dvh; 
+            display: flex;
+            overflow: hidden;
+            width: 100vw;
+        }
+
+        /* --- SIDEBAR MİMARİSİ --- */
+        .sidebar-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 280px;
+            background-color: var(--sidebar-color);
+            z-index: 200;
+            transform: translateX(-100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        /* ETKİLEŞİMLİ İKON TASARIMI */
+        .icon-btn { 
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 50%; 
+            display: flex;
+            align-items: center;
+            justify-content: center; 
+            color: var(--text-secondary);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .icon-btn .material-symbols-outlined, 
+        .sidebar .material-symbols-outlined {
+            background: var(--nexus-grad);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0px 3px 2px rgba(0,0,0,0.5));
+            font-weight: 900;
+        }
+        .icon-btn:active {
+            transform: scale(0.9);
+            background-color: rgba(255,255,255,0.05);
+        }
+
+        .new-chat-btn {
+            background-color: #1A1A1C;
+            color: var(--text-secondary);
+            padding: 14px 22px;
+            border-radius: 30px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 25px 0;
+            border: 1px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .new-chat-btn:hover {
+            border-color: var(--border-color);
+            background-color: #222225;
+        }
+
+        /* --- ANA İÇERİK MOTORU --- */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background-color: var(--bg-color);
+            z-index: 90;
+        }
+        
+        .model-selector {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 5px;
+            background: linear-gradient(90deg, #4285F4, #9B72CB, #D96570, #4285F4);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: moveNexusGrad 4s linear infinite;
+        }
+
+        @keyframes moveNexusGrad { to { background-position: 200% center; } }
+
+        /* Gölgesiz Saf Profil */
+        .user-avatar-slot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--nexus-grad);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: none; /* Gölge tamamen kaldırıldı */
+        }
+        .user-avatar-slot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* MESAJ ALANI: ESNEK YERLEŞİM */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px 20px 150px 20px;
+            scroll-behavior: smooth;
+        }
+
+        .msg-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 35px;
+            width: 100%;
+            max-width: 850px;
+            margin-left: auto;
+            margin-right: auto;
+            align-items: center; /* Tam orta hizalama */
+        }
+        .msg-row.user {
+            flex-direction: row-reverse;
+        }
+        
+        .bubble {
+            font-size: 16px;
+            line-height: 1.75;
+            color: var(--text-primary);
+            overflow-wrap: break-word;
+        }
+        .user .bubble {
+            background-color: var(--user-bubble);
+            padding: 15px 22px;
+            border-radius: 24px 8px 24px 24px;
+        }
+        .bot .bubble {
+            flex: 1;
+            padding: 0;
+        }
+
+        /* BOT LOGOSU VE AURA */
+        .bot-avatar-frame {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .bot-avatar-frame img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 10;
+            border-radius: 50%;
+        }
+
+        .aura-spinner {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            background: var(--nexus-grad);
+            animation: rotateAura 1.5s linear infinite;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            -webkit-mask: radial-gradient(transparent 65%, black 66%);
+            mask: radial-gradient(transparent 65%, black 66%);
+        }
+        .bot-avatar-frame.loading .aura-spinner {
+            opacity: 1;
+        }
+        @keyframes rotateAura {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- KARŞILAMA EKRANI: EVRENSEL HİZALAMA --- */
+        .welcome-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            padding-top: 5dvh; /* Sabit margin yerine esnek alan */
+        }
+        
+        /* Akıllı Başlık: Her ekranda kendini ölçekler */
+        .welcome-gradient {
+            font-size: clamp(32px, 8vw, 48px); 
+            font-weight: 900;
+            background: linear-gradient(90deg, #4285F4, #9B72CB, #D96570, #4285F4);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+            animation: moveNexusGrad 4s linear infinite;
+        }
+
+        /* --- GİRİŞ PANELİ --- */
+        .input-zone {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-color);
+            padding: 25px;
+            z-index: 100;
+        }
+        .input-wrapper {
+            background-color: var(--surface-color);
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
+            border: 1px solid var(--border-color);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 16px;
+            height: 48px;
+        }
+
+        /* 24px 3D GÖNDERME BUTONU */
+        .send-btn-3d { 
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.6));
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .send-btn-3d:active { transform: scale(0.8) rotate(-10deg); }
+        .send-btn-3d svg { width: 100%; height: 100%; }
+
+        .hidden { display: none !important; }
+        
+        .loading-shimmer {
+            background: linear-gradient(90deg, #4285F4, #ffffff, #4285F4);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            animation: shimmer 2s linear infinite;
+            font-weight: 900;
+        }
+        @keyframes shimmer { to { background-position: 200% center; } }
+        
+        @media (max-width: 768px) {
+            .header { padding: 12px 16px; }
+            .input-zone { padding: 15px; }
+            .chat-container { padding-top: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <aside id="sidebar" class="sidebar">
+        <div class="icon-btn" id="sidebar-close" style="align-self: flex-end;">
+            <span class="material-symbols-outlined">close</span>
+        </div>
+        
+        <div id="g_id_onload" 
+             data-client_id="YOUR_GOOGLE_CLIENT_ID" 
+             data-callback="handleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-shape="pill" data-theme="filled_black" style="margin-top:30px;"></div>
+        
+        <div class="new-chat-btn" id="new-chat-btn">
+            <span class="material-symbols-outlined" style="font-size: 22px;">add_circle</span>
+            <span>Yeni Sohbet Başlat</span>
+        </div>
+        
+        <div style="flex:1"></div>
+        
+        <div class="icon-btn" style="width:100%; justify-content:flex-start; border-radius:15px; gap:15px; padding:15px; background: rgba(255,255,255,0.03);">
+            <span class="material-symbols-outlined">settings</span>
+            <span>Uygulama Ayarları</span>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <div class="icon-btn" id="menu-toggle"><span class="material-symbols-outlined">menu</span></div>
+            <div class="model-selector">NEXUS</div>
+            <div class="user-avatar-slot" id="header-avatar">
+                <span class="material-symbols-outlined" style="color:white; font-size:22px;">person</span>
+            </div>
+        </header>
+
+        <div id="chat-wrapper" class="chat-container">
+            <div id="welcome-screen" class="welcome-screen">
+                <img src="logo.png" alt="Nexus AI Logo" 
+                     style="width:80px; height:80px; margin-bottom:25px; border-radius:22px;" 
+                     onerror="this.src='https://via.placeholder.com/80/4285F4/FFFFFF?text=N'">
+                <div class="welcome-gradient" id="welcome-title">Merhaba</div>
+                <div style="color:#444746; font-size:22px; font-weight:700; margin-bottom: 50px; opacity: 0.8;">
+                    Bugün senin için neler yapabilirim?
+                </div>
+            </div>
+            
+            <div id="messages-area" class="hidden" style="display:flex; flex-direction:column;"></div>
+        </div>
+
+        <div class="input-zone">
+            <div class="input-wrapper">
+                <input type="text" id="prompt-input" placeholder="Nexus bu gün senin için neler yapabilir" autocomplete="off">
+                
+                <div id="send-btn" class="send-btn-3d hidden">
+                    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="nexusIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#4285F4" />
+                                <stop offset="50%" style="stop-color:#9B72CB" />
+                                <stop offset="100%" style="stop-color:#D96570" />
+                            </linearGradient>
+                        </defs>
+                        <path d="M472.1,232.3L61,13.2C48.6,6.9,34.1,16,34.1,30v140.7c0,11.5,8.4,21.3,19.8,23.1l157.1,24.2c16.3,2.5,16.3,25.4,0,27.9l-157.1,24.2c-11.4,1.8-19.8,11.6-19.8,23.1V482c0,14,14.5,23.1,26.9,16.8l411.1-219.1C482.7,273.7,482.7,238.3,472.1,232.3z" fill="url(#nexusIconGrad)"/>
+                    </svg>
+                </div>
+            </div>
+            <div style="text-align: center; font-size: 11px; color: #444746; margin-top: 15px; font-weight: 700;">
+                Nexus yeni üretilmiş bir yapay zekâ asistanıdır bazı hatalar yapabilir.
+            </div>
+        </div>
+    </main>
+
+    <script>
+        /* --- NEXUS ULTIMATE ENGINE --- */
+        const CONFIG = {
+            API_KEY: "AIzaSyC6mfIkZU_dximzavBZtbVyv-FF0HxAFn4",
+            MODEL: "gemini-2.5-pro"
+        };
+
+        let currentPersona = { name: "", picture: "" };
+
+        // Google Giriş İşleyicisi
+        function handleCredentialResponse(response) {
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            currentPersona = {
+                name: payload.given_name,
+                picture: payload.picture
+            };
+            
+            document.getElementById('header-avatar').innerHTML = `<img src="${currentPersona.picture}">`;
+            document.getElementById('welcome-title').innerText = `Merhaba ${currentPersona.name}`;
+            
+            Nexus.toggleSidebar();
+        }
+
+        const Nexus = {
+            isGenerating: false,
+            
+            init() {
+                this.dom = {
+                    sidebar: document.getElementById('sidebar'),
+                    overlay: document.getElementById('sidebar-overlay'),
+                    toggleBtns: document.querySelectorAll('#menu-toggle, #sidebar-close'),
+                    newChat: document.getElementById('new-chat-btn'),
+                    welcome: document.getElementById('welcome-screen'),
+                    msgArea: document.getElementById('messages-area'),
+                    chatWrap: document.getElementById('chat-wrapper'),
+                    input: document.getElementById('prompt-input'),
+                    send: document.getElementById('send-btn')
+                };
+                this.bindEvents();
+            },
+
+            bindEvents() {
+                this.dom.toggleBtns.forEach(btn => btn.addEventListener('click', () => this.toggleSidebar()));
+                this.dom.overlay.addEventListener('click', () => this.toggleSidebar());
+                
+                this.dom.newChat.addEventListener('click', () => this.resetChat());
+                this.dom.send.addEventListener('click', () => this.handleSend());
+                
+                this.dom.input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.handleSend();
+                });
+                
+                this.dom.input.addEventListener('input', () => {
+                    const hasValue = !!this.dom.input.value.trim();
+                    this.dom.send.classList.toggle('hidden', !hasValue);
+                });
+            },
+
+            toggleSidebar() {
+                this.dom.sidebar.classList.toggle('open');
+                this.dom.overlay.classList.toggle('active');
+            },
+
+            resetChat() {
+                this.dom.welcome.style.display = 'flex';
+                this.dom.msgArea.innerHTML = '';
+                this.dom.msgArea.classList.add('hidden');
+                this.dom.input.value = '';
+                this.toggleSidebar();
+            },
+
+            async handleSend() {
+                const text = this.dom.input.value.trim();
+                if (!text || this.isGenerating) return;
+
+                this.dom.welcome.style.display = 'none';
+                this.dom.msgArea.classList.remove('hidden');
+                
+                this.addBubble(text, 'user');
+                this.dom.input.value = '';
+                this.dom.send.classList.add('hidden');
+
+                this.isGenerating = true;
+                const loadId = this.showLoading();
+
+                try {
+                    const result = await this.askGemini(text);
+                    document.getElementById(loadId).remove();
+                    this.addBubble(result, 'bot');
+                } catch (error) {
+                    document.getElementById(loadId).remove();
+                    this.addBubble("Hata: Nexus şu an cevap veremiyor. Bağlantını kontrol et.", 'bot');
+                } finally {
+                    this.isGenerating = false;
+                }
+            },
+
+            async askGemini(prompt) {
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${CONFIG.MODEL}:generateContent?key=${CONFIG.API_KEY}`;
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            },
+
+            addBubble(text, sender) {
+                const row = document.createElement('div');
+                row.className = `msg-row ${sender}`;
+                
+                if (sender === 'user') {
+                    const avatarHtml = currentPersona.picture 
+                        ? `<div class="user-avatar-slot" style="width:30px; height:30px; flex-shrink:0;"><img src="${currentPersona.picture}"></div>` 
+                        : '';
+                    row.innerHTML = `${avatarHtml}<div class="bubble">${this.escapeHTML(text)}</div>`;
+                } else {
+                    const parsedContent = marked.parse(text);
+                    row.innerHTML = `
+                        <div class="bot-avatar-frame">
+                            <div class="aura-spinner"></div>
+                            <img src="logo.png" onerror="this.src='https://via.placeholder.com/30/4285F4/FFFFFF?text=N'">
+                        </div>
+                        <div class="bubble">${parsedContent}</div>
+                    `;
+                }
+
+                this.dom.msgArea.appendChild(row);
+                
+                row.querySelectorAll('pre code').forEach(block => hljs.highlightElement(block));
+                this.dom.chatWrap.scrollTo({ top: this.dom.chatWrap.scrollHeight, behavior: 'smooth' });
+            },
+
+            showLoading() {
+                const loadId = 'nexus-load-' + Date.now();
+                const container = document.createElement('div');
+                container.id = loadId;
+                container.className = 'msg-row bot';
+                
+                container.innerHTML = `
+                    <div class="bot-avatar-frame loading">
+                        <div class="aura-spinner"></div>
+                        <img src="logo.png">
+                    </div>
+                    <div class="bubble">
+                        <span class="loading-shimmer">Nexus düşünüyor...</span>
+                    </div>
+                `;
+                
+                this.dom.msgArea.appendChild(container);
+                this.dom.chatWrap.scrollTo({ top: this.dom.chatWrap.scrollHeight, behavior: 'smooth' });
+                return loadId;
+            },
+
+            escapeHTML(text) {
+                const entities = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'};
+                return text.replace(/[&<>"']/g, match => entities[match]);
+            }
+        };
+
+        // Nexus'u Başlat
+        document.addEventListener('DOMContentLoaded', () => Nexus.init());
+    </script>
+</body>
+</html>
